@@ -159,7 +159,7 @@ If it saves you time, helps with your workflow, or you simply enjoy using it, co
 Your support helps me continue improving the project and adding new features.
 
 ☕ **Buy me a coffee:**
-*(Add your Buy Me A Coffee, GitHub Sponsors, Ko-fi, UPI QR, or other support link here.)*
+paypal: ankitsinha1101@gmail.com
 
 ---
 
