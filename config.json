@@ -1,0 +1,11 @@
+{
+    "caption_mode": "flux",
+    "caption_engine": "florence2-large",
+    "backup_before_captioning": true,
+    "skip_existing_captions": true,
+    "create_scan_report": true,
+    "placeholder_caption": "TODO_CAPTION",
+    "reports_folder": "reports",
+    "device": "cuda",
+    "max_new_tokens": 128
+}
