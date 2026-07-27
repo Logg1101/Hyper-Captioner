@@ -102,17 +102,12 @@ The first launch may take several minutes while models are downloaded.
 
 # ▶ Launch
 
-Run
+Run 
 
 ```bash
 python app.py
 ```
 
-or
-
-```bash
-captioner.bat
-```
 
 ---
 
