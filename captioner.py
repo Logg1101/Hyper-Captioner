@@ -91,7 +91,7 @@ def generate_with_joycaption(processor, model, image, subject_type, text_style, 
     inputs = processor(text=[convo_string], images=[image], return_tensors="pt").to("cuda")
     
     with torch.no_grad():
-        generate_ids = model.generate(**inputs, max_new_tokens=180, do_sample=False, use_cache=True)[0]
+        generate_ids = model.generate(**inputs, max_new_tokens=512, do_sample=False, use_cache=True)[0]
     
     generate_ids = generate_ids[inputs["input_ids"].shape[1]:]
     return processor.tokenizer.decode(generate_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False).strip()
