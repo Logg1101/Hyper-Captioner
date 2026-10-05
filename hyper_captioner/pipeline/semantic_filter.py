@@ -70,8 +70,8 @@ class SemanticFilter:
     RENDERING_JARGON_PATTERN: ClassVar[re.Pattern] = re.compile(
         r"\b(octane\s+render|octane|unreal\s+engine(\s*[45])?|ue[45]|raytracing|"
         r"ray\s*tracing|ray-tracing|raytraced|ray-traced|subsurface\s+scattering|"
-        r"cycles\s+render|cycles|v-ray|vray|redshift(\s+render)?|arnold\s+render|"
-        r"lumion|rendered\s+in\s+blender|blender\s+cycles|zbrush(\s+sculpt)?|"
+        r"cycles\s+render|blender\s+cycles|v-ray|vray|redshift(\s+render)?|arnold\s+render|"
+        r"lumion|rendered\s+in\s+blender|zbrush(\s+sculpt)?|"
         r"cinema\s+4d|c4d|cg\s+render|volumetric\s+rendering)\b",
         re.IGNORECASE,
     )
@@ -94,10 +94,10 @@ class SemanticFilter:
         r"\b(vector\s*art|pixel\s*art|pencil\s*sketch|charcoal\s*sketch)\b",
         r"\b(flat\s*colors?|monochrome|grayscale|sepia)\b",
         r"\b(anime|manga|comic\s*book|graphic\s*novel|pop\s*art|minimalist|surrealist)\s+style\b",
-        r"\b(photorealistic|hyperrealistic|stylized|impressionist)\b",
+        r"\b(photorealistic|stylized|impressionist)\b",
         # Surface & Material Reflectance Response
         r"\b(diffused\s+)?specular(\s+(highlights?|reflections?|response))?\b",
-        r"\bhighlights?\b",
+        r"\b(specular|subtle|blown-out|surface|edge|rim)\s+highlights?\b",
         r"\b(metallic|surface)\s+reflections?\b",
         r"\b(matte|glossy|rough|lustrous|polished|cracked|weathered)\s+(\w+\s+)*surface\b",
         r"\bsurface\s+(texture|response|reflectance|finish)\b",
@@ -126,8 +126,8 @@ class SemanticFilter:
         # Character counts / demographics / identities
         r"\b(\d+girls?|\d+boys?|solo|multiple\s+girls|multiple\s+boys|woman|man|female|male|girl|boy|child|baby|person|human|character)\b",
         # Hair / Eye color + Anatomy
-        r"\b(pink|blue|blonde|blond|brown|black|white|silver|red|green|purple|orange|yellow|golden|grey|gray|aqua|cyan|navy)\s+(hair|eyes)\b",
-        r"\b(hair|eyes|face|lips|mouth|nose|ears|elf\s+ears|pointed\s+ears|cheeks|neck|chest|breasts|cleavage|navel|belly|abs|waist|hips|thighs?|legs?|feet|foot|arms?|hands?|fingers?|claws|wings|horns|tail|halo|fur|scales|freckles|scar|tattoo)\b",
+        r"\b(pink|blue|blonde|blond|brown|black|white|silver|red|green|purple|orange|yellow|golden|grey|gray|aqua|cyan|navy)\s+(hair|eyes?)\b",
+        r"\b(hair|eyes?|face|lips?|mouth|nose|ears?|elf\s+ears?|pointed\s+ears?|cheeks?|neck|chest|breasts?|cleavage|navel|belly|abs|waist|hips?|thighs?|legs?|feet|foot|arms?|hands?|fingers?|claws?|wings?|horns?|tails?|halos?|fur|scales?|freckles?|scars?|tattoos?)\b",
         r"\b(ponytail|twintails|twin\s+tails|braid|bun|bangs|bob\s+cut|ahoge)\b",
         # Clothing / Garments / Accessories
         r"\b(dress|maid\s+dress|sundress|gown|skirt|pleated\s+skirt|miniskirt|jacket|leather\s+jacket|denim\s+jacket|coat|trench\s+coat|blazer|hoodie|sweater|cardigan|shirt|t-shirt|blouse|corset|vest|pants|trousers|jeans|shorts|leggings|tights|stockings|thighhighs|socks|boots|shoes|sneakers|sandals|heels|gloves|mittens|hat|cap|beret|beanie|helmet|mask|scarf|cape|cloak|robe|kimono|yukata|swimsuit|bikini|uniform|school\s+uniform|sailor\s+suit|suit|tuxedo|armor|belt|buckle|collar|choker|necklace|earrings|bracelet|ring|ribbon|bow|hair\s+ribbon|tie|necktie|bowtie|sash|apron|veil)\b",
