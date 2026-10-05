@@ -59,14 +59,36 @@ class BaseCaptionMode(ABC):
         """
         result: List[SemanticCategory] = []
         for cat in categories:
-            normalized = (
-                SemanticCategory(cat)
-                if isinstance(cat, str) and cat in SemanticCategory._value2member_map_
-                else cat
-            )
-            if isinstance(normalized, SemanticCategory) and self.is_category_allowed(normalized):
+            if isinstance(cat, str):
+                try:
+                    normalized = SemanticCategory(cat)
+                except ValueError:
+                    continue
+            elif isinstance(cat, SemanticCategory):
+                normalized = cat
+            else:
+                continue
+
+            if self.is_category_allowed(normalized):
                 result.append(normalized)
         return result
+
+    def _default_filter_facts(
+        self, facts: StructuredVisualFacts, trigger_cfg: TriggerConfig
+    ) -> List[FactItem]:
+        """
+        Standard category-based filtering logic respecting locked and uncertain facts.
+        """
+        filtered: List[FactItem] = []
+        for fact in facts.all_facts():
+            if fact.locked:
+                filtered.append(fact)
+                continue
+            if fact.is_uncertain or fact.primary_category == SemanticCategory.UNCERTAINTY:
+                continue
+            if self.is_category_allowed(fact.primary_category):
+                filtered.append(fact)
+        return filtered
 
     @abstractmethod
     def build_extraction_instructions(self) -> str:

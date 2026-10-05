@@ -70,5 +70,13 @@ def _init_default_registry() -> None:
     register_caption_mode(ConceptMode())
 
 
+def _reset_registry() -> None:
+    """
+    Reset the registry back to default core 5 mode contracts (useful for tests).
+    """
+    _REGISTRY.clear()
+    _init_default_registry()
+
+
 # Initialize core registry on module load
 _init_default_registry()
