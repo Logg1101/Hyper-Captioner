@@ -23,7 +23,9 @@ logger = logging.getLogger(__name__)
 DEFAULT_PRESETS: Dict[str, PresetConfig] = {
     "Character LoRA": PresetConfig(
         name="Character LoRA",
-        caption_mode=CaptionMode.HYBRID,
+        caption_mode="character",
+        caption_format="tags",
+        trigger_placement="prepend",
         lora_strategy=LoRAStrategy.CHARACTER,
         wd14_general_threshold=0.35,
         wd14_character_threshold=0.60,
@@ -35,7 +37,9 @@ DEFAULT_PRESETS: Dict[str, PresetConfig] = {
     ),
     "Style LoRA": PresetConfig(
         name="Style LoRA",
-        caption_mode=CaptionMode.HYBRID,
+        caption_mode="style",
+        caption_format="tags",
+        trigger_placement="append",
         lora_strategy=LoRAStrategy.STYLE,
         wd14_general_threshold=0.40,
         wd14_character_threshold=0.70,
@@ -46,7 +50,9 @@ DEFAULT_PRESETS: Dict[str, PresetConfig] = {
     ),
     "Concept LoRA": PresetConfig(
         name="Concept LoRA",
-        caption_mode=CaptionMode.HYBRID,
+        caption_mode="concept",
+        caption_format="tags",
+        trigger_placement="prepend",
         lora_strategy=LoRAStrategy.CONCEPT,
         wd14_general_threshold=0.35,
         wd14_character_threshold=0.65,
@@ -57,7 +63,9 @@ DEFAULT_PRESETS: Dict[str, PresetConfig] = {
     ),
     "Danbooru Tag Only": PresetConfig(
         name="Danbooru Tag Only",
-        caption_mode=CaptionMode.TAG,
+        caption_mode="character",
+        caption_format="tags",
+        trigger_placement="prepend",
         lora_strategy=LoRAStrategy.GENERAL,
         wd14_general_threshold=0.35,
         wd14_character_threshold=0.60,
@@ -68,7 +76,9 @@ DEFAULT_PRESETS: Dict[str, PresetConfig] = {
     ),
     "Natural Language (Flux)": PresetConfig(
         name="Natural Language (Flux)",
-        caption_mode=CaptionMode.NATURAL,
+        caption_mode="character",
+        caption_format="natural",
+        trigger_placement="prepend",
         lora_strategy=LoRAStrategy.CHARACTER,
         wd14_general_threshold=0.40,
         wd14_character_threshold=0.65,

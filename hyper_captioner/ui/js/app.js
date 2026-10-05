@@ -164,15 +164,24 @@ document.addEventListener("DOMContentLoaded", () => {
   presetSelect.addEventListener("change", () => {
     const p = presetsData[presetSelect.value];
     if (p) {
-      if (p.caption_mode) captionModeSelect.value = p.caption_mode;
+      if (p.caption_mode && captionModeSelect) {
+        if (p.caption_mode === "hybrid" || p.caption_mode === "tag") {
+          captionModeSelect.value = "character";
+        } else if (p.caption_mode === "natural") {
+          captionModeSelect.value = "character";
+          if (captionFormatSelect) captionFormatSelect.value = "natural";
+        } else {
+          captionModeSelect.value = p.caption_mode;
+        }
+      }
       if (p.caption_format && captionFormatSelect) captionFormatSelect.value = p.caption_format;
       if (p.trigger_placement && triggerPlacementSelect) triggerPlacementSelect.value = p.trigger_placement;
-      if (p.lora_strategy) loraStrategySelect.value = p.lora_strategy;
+      if (p.lora_strategy && loraStrategySelect) loraStrategySelect.value = p.lora_strategy;
       if (p.character) {
-        triggerWordInput.value = p.character.trigger_word || "";
-        refDescInput.value = p.character.reference_description || "";
+        if (triggerWordInput) triggerWordInput.value = p.character.trigger_word || "";
+        if (refDescInput) refDescInput.value = p.character.reference_description || "";
       }
-      if (p.keep_underscores !== undefined) underscoresChk.checked = p.keep_underscores;
+      if (p.keep_underscores !== undefined && underscoresChk) underscoresChk.checked = p.keep_underscores;
     }
   });
 
