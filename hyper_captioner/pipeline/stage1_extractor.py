@@ -182,7 +182,7 @@ class Stage1Extractor:
 
         # 1. Primary: JSON Parser
         json_facts = self._parse_json(text)
-        if json_facts is not None and any(json_facts.values()):
+        if json_facts is not None:
             return json_facts, "json"
 
         # 2. Fallback: Tagged Semantic Category Block Parser
@@ -305,11 +305,14 @@ class Stage1Extractor:
 
             string_items = self._extract_string_items(raw_val)
             for item_text in string_items:
+                item_cat = category
+                if item_cat is None:
+                    item_cat = self._heuristic_categorize(item_text)
                 fact = self._create_fact_item(
                     text=item_text,
-                    category=category,
+                    category=item_cat,
                     source="joycaption",
-                    is_uncertain=is_uncertain_category,
+                    is_uncertain=is_uncertain_category or (item_cat == SemanticCategory.UNCERTAINTY),
                     raw_text=item_text,
                     cat_counts=cat_counts,
                 )
@@ -333,9 +336,10 @@ class Stage1Extractor:
         current_category: Optional[SemanticCategory] = None
         has_matched_blocks = False
 
-        # Pattern for matching category headers on lines
+        # Pattern for matching category headers on lines:
+        # Require brackets [Category] with optional colon, or unbracketed Category followed by a colon.
         header_pattern = re.compile(
-            r"^\s*(?:[-*•#]{1,3}\s*)?(?:\[([A-Za-z\s&/_]+)\](?:\s*[:\-]\s*|\s*)|([A-Za-z\s&/_]{3,35})\s*[:\-]\s*)(.*)$",
+            r"^\s*(?:[-*•#]{1,3}\s*)?(?:\[([A-Za-z\s&/_]+)\]\s*:?|([A-Za-z\s&/_]{3,35})\s*:\s*)(.*)$",
             re.IGNORECASE,
         )
 
@@ -345,6 +349,7 @@ class Stage1Extractor:
                 continue
 
             match = header_pattern.match(line_str)
+            resolved_cat = None
             if match:
                 raw_header = (match.group(1) or match.group(2)).strip()
                 resolved_cat = self._resolve_category_header(raw_header)
@@ -372,9 +377,9 @@ class Stage1Extractor:
                     continue
 
             # Multiline continuation under the active header
-            if current_category is not None:
+            if current_category is not None and resolved_cat is None:
                 cleaned_line = line_str.lstrip("-*• ").strip()
-                if cleaned_line and not header_pattern.match(line_str):
+                if cleaned_line:
                     is_uncertain = current_category == SemanticCategory.UNCERTAINTY
                     items = [p.strip() for p in re.split(r"[,;]+", cleaned_line) if p.strip()]
                     for it in items:
@@ -473,9 +478,12 @@ class Stage1Extractor:
                 else:
                     # Filter out unconfirmed character name
                     continue
-            else:
+            elif cat_id == 0:
                 # General tags (Category 0)
                 category = self._heuristic_categorize(clean_tag)
+            else:
+                # Skip artist (1), copyright (3), meta (5/9)
+                continue
 
             fact = self._create_fact_item(
                 text=clean_tag,
@@ -536,6 +544,10 @@ class Stage1Extractor:
         if not cleaned or len(cleaned) < 2 or cleaned.lower() in {"none", "n/a", "unknown", "not visible"}:
             return None
 
+        # Fallback to OBJECTS if category is None
+        if category is None:
+            category = SemanticCategory.OBJECTS
+
         # Authoritative uncertainty check
         if category == SemanticCategory.UNCERTAINTY or is_uncertain:
             is_uncertain = True
@@ -591,8 +603,8 @@ class Stage1Extractor:
         if h_norm in CATEGORY_HEADER_MAP:
             return CATEGORY_HEADER_MAP[h_norm]
 
-        for k, v in CATEGORY_HEADER_MAP.items():
-            if k in h_norm:
+        for k, v in sorted(CATEGORY_HEADER_MAP.items(), key=lambda x: len(x[0]), reverse=True):
+            if re.search(rf"\b{re.escape(k)}\b", h_norm):
                 return v
 
         try:

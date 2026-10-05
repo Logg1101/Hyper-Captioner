@@ -392,3 +392,72 @@ def test_build_stage1_extraction_prompt():
     # With mode instructions appended
     prompt_custom = build_stage1_extraction_prompt(mode_instructions="Focus heavily on fabric textures and weave.")
     assert "Focus heavily on fabric textures and weave." in prompt_custom
+
+
+# ============================================================================
+# 10. Reviewer Feedback Edge Case Tests
+# ============================================================================
+
+
+def test_extract_json_unrecognized_key_safely(extractor):
+    raw_json = """{
+        "notes": ["hand on hip", "soft ambient lighting"],
+        "miscellaneous": ["wooden barrel"]
+    }"""
+    facts = extractor.extract(raw_json)
+    assert facts.parse_method == "json"
+    pose_facts = facts.get_category(SemanticCategory.POSE)
+    assert any(f.text == "hand on hip" for f in pose_facts)
+    lighting_facts = facts.get_category(SemanticCategory.LIGHTING)
+    assert any(f.text == "soft ambient lighting" for f in lighting_facts)
+    obj_facts = facts.get_category(SemanticCategory.OBJECTS)
+    assert any(f.text == "wooden barrel" for f in obj_facts)
+
+
+def test_extract_tagged_blocks_bullet_hyphens(extractor):
+    raw_blocks = """
+    [APPEARANCE]:
+    - blue-gray eyes
+    - off-shoulder dress
+    - knee-high socks
+    """
+    facts = extractor.extract(raw_blocks)
+    assert facts.parse_method == "tagged_block"
+    app = facts.get_category(SemanticCategory.APPEARANCE)
+    app_texts = [f.text for f in app]
+    assert "blue-gray eyes" in app_texts
+    assert "off-shoulder dress" in app_texts
+    assert "knee-high socks" in app_texts
+
+
+def test_wd14_enrichment_ignores_artist_copyright_meta(extractor):
+    joy_json = """{"identity": ["1girl"]}"""
+    wd14_tags = [
+        ("artist_name", 0.99, 1),       # Artist tag -> SKIP
+        ("genshin_impact", 0.95, 3),   # Copyright tag -> SKIP
+        ("rating:safe", 0.98, 5),      # Meta tag -> SKIP
+        ("highres", 0.92, 9),          # Meta tag -> SKIP
+        ("solo", 0.97, 4),             # Demographic tag -> KEEP
+        ("blue_hair", 0.94, 0),        # General visual tag -> KEEP
+    ]
+    facts = extractor.extract(joy_json, wd14_tags=wd14_tags)
+    all_texts = [f.text for f in facts.all_facts()]
+    assert "solo" in all_texts
+    assert "blue hair" in all_texts
+    assert "artist name" not in all_texts
+    assert "genshin impact" not in all_texts
+    assert "rating:safe" not in all_texts
+    assert "highres" not in all_texts
+
+
+def test_extract_empty_json_dict(extractor):
+    raw_json = "{}"
+    facts = extractor.extract(raw_json)
+    assert facts.parse_method == "json"
+    assert len(facts.all_facts()) == 0
+
+
+def test_resolve_category_header_word_boundary(extractor):
+    assert extractor._resolve_category_header("overview") is None
+    assert extractor._resolve_category_header("view") == SemanticCategory.CAMERA
+    assert extractor._resolve_category_header("camera view") == SemanticCategory.CAMERA
