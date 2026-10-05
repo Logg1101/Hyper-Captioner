@@ -533,7 +533,10 @@ class CharacterConfig:
 @dataclass
 class PresetConfig:
     name: str = "Character LoRA"
-    caption_mode: CaptionMode = CaptionMode.HYBRID
+    caption_mode: Any = CaptionMode.HYBRID
+    caption_format: str = "tags"
+    trigger_placement: str = "prepend"
+    write_audit: bool = False
     lora_strategy: LoRAStrategy = LoRAStrategy.CHARACTER
     character: CharacterConfig = field(default_factory=CharacterConfig)
     wd14_general_threshold: float = 0.35
@@ -550,8 +553,19 @@ class PresetConfig:
     def to_dict(self) -> Dict[str, Any]:
         return {
             "name": self.name,
-            "caption_mode": self.caption_mode.value,
-            "lora_strategy": self.lora_strategy.value,
+            "caption_mode": (
+                self.caption_mode.value
+                if hasattr(self.caption_mode, "value")
+                else str(self.caption_mode)
+            ),
+            "caption_format": self.caption_format,
+            "trigger_placement": self.trigger_placement,
+            "write_audit": self.write_audit,
+            "lora_strategy": (
+                self.lora_strategy.value
+                if hasattr(self.lora_strategy, "value")
+                else str(self.lora_strategy)
+            ),
             "character": {
                 "name": self.character.name,
                 "trigger_word": self.character.trigger_word,
@@ -569,3 +583,4 @@ class PresetConfig:
             "custom_tags": self.custom_tags,
             "blacklist": self.blacklist,
         }
+

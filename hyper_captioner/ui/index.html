@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HYPER CAPTIONER // DATASET ENGINE</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="brand">
+      <div class="logo-badge">HC-2.0</div>
+      <h1>HYPER <span>CAPTIONER</span></h1>
+    </div>
+    <div class="header-status">
+      <div id="vram-telemetry" class="status-badge">
+        <span style="color:var(--cyan);">GPU:</span> Checking...
+      </div>
+      <div id="batch-badge" class="status-badge" style="display:none; background:rgba(0,243,255,0.15); border-color:var(--cyan); color:var(--cyan);">
+        BATCH PROCESSING
+      </div>
+    </div>
+  </header>
+
+  <!-- Navigation Tabs -->
+  <nav class="nav-tabs">
+    <button class="tab-btn active" data-tab="dataset-tab">📁 DATASET</button>
+    <button class="tab-btn" data-tab="models-tab">⚙️ MODELS</button>
+    <button class="tab-btn" data-tab="captioning-tab">🚀 CAPTIONING</button>
+    <button class="tab-btn" data-tab="vocabulary-tab">📖 VOCABULARY</button>
+    <button class="tab-btn" data-tab="review-tab">🔍 REVIEW</button>
+    <button class="tab-btn" data-tab="export-tab">💾 EXPORT</button>
+    <button class="tab-btn" data-tab="settings-tab">🛠️ SETTINGS</button>
+  </nav>
+
+  <!-- Main Content Area -->
+  <main>
+
+    <!-- 1. DATASET TAB -->
+    <section id="dataset-tab" class="tab-pane active">
+      <div class="card">
+        <div class="card-title">DATASET LOCATION & SCAN</div>
+        <div class="form-group">
+          <label>Dataset Folder Path</label>
+          <div class="input-row">
+            <input type="text" id="dataset-path" placeholder="e.g. D:\AI\DATASETS\MyLoRA" value="">
+            <button class="btn btn-secondary" id="browse-btn">Browse...</button>
+            <button class="btn btn-primary" id="scan-btn">Scan Dataset</button>
+          </div>
+        </div>
+
+        <div class="grid-cols-3" style="margin-top: 16px;">
+          <div class="stat-box">
+            <div class="stat-value" id="stat-total">0</div>
+            <div class="stat-label">Total Images</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value" id="stat-captioned" style="color: var(--emerald);">0</div>
+            <div class="stat-label">With Captions (.txt)</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value" id="stat-missing" style="color: var(--rose);">0</div>
+            <div class="stat-label">Missing Captions</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span>IMAGE GALLERY</span>
+          <span id="gallery-count" style="font-size:12px; color:var(--text-muted);">0 Images</span>
+        </div>
+        <div class="gallery-grid" id="gallery-container">
+          <div style="grid-column: 1 / -1; text-align: center; color: var(--text-dim); padding: 40px 0;">
+            Select a dataset folder and click "Scan Dataset" to load images.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. MODELS TAB -->
+    <section id="models-tab" class="tab-pane">
+      <div class="grid-cols-2">
+        <div class="card">
+          <div class="card-title">INFERENCE ENGINE CONFIGURATION</div>
+          
+          <div class="form-group">
+            <label>Model Source Mode</label>
+            <select id="model-source-select">
+              <option value="local_only">Local Only (Strict Offline Mode - No Network Calls)</option>
+              <option value="download_missing">Local + Download Missing Models</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>WD14 Tagger Device</label>
+            <select id="wd14-device-select">
+              <option value="auto">Auto (CUDA if &gt;4GB free VRAM, otherwise CPU)</option>
+              <option value="cuda">CUDA (GPU Dedicated)</option>
+              <option value="cpu">CPU (Preserve 100% VRAM for Vision Model)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>VRAM Execution Mode</label>
+            <select id="vram-mode-select">
+              <option value="balanced">Balanced (JoyCaption on GPU, WD14 on CPU, cleanup after batch)</option>
+              <option value="max_speed">Maximum Speed (Keep all models resident in VRAM)</option>
+              <option value="min_vram">Minimum VRAM (Aggressive sequential unload & cache purge)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>WD14 General Tag Threshold: <span id="wd14-threshold-val">0.35</span></label>
+            <input type="range" id="wd14-threshold" min="0.10" max="0.90" step="0.05" value="0.35" style="width:100%;">
+          </div>
+
+          <div class="form-group">
+            <label>WD14 Character Tag Threshold: <span id="wd14-char-threshold-val">0.60</span></label>
+            <input type="range" id="wd14-char-threshold" min="0.10" max="0.95" step="0.05" value="0.60" style="width:100%;">
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">ACTIVE HARDWARE & CACHE STATUS</div>
+          <div id="models-hardware-info" style="font-size: 13px; line-height: 1.8;">
+            <p><strong>JoyCaption Engine:</strong> fancyfeast/llama-joycaption-beta-one-hf-llava (4-bit NF4)</p>
+            <p><strong>WD14 Engine:</strong> SmilingWolf/wd-swinv2-tagger-v3 (ONNX)</p>
+            <p><strong>Verification Engine:</strong> microsoft/Florence-2-large (On-demand grounding)</p>
+            <div style="margin-top: 16px; padding: 14px; background: var(--bg-card); border-radius: var(--radius-sm);">
+              <div id="vram-details">Querying hardware telemetry...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. CAPTIONING TAB -->
+    <section id="captioning-tab" class="tab-pane">
+      <div class="grid-cols-2">
+        <!-- Configuration Column -->
+        <div class="card">
+          <div class="card-title">CAPTION GENERATION SETTINGS</div>
+
+          <div class="form-group">
+            <label>Dataset Preset</label>
+            <div class="input-row">
+              <select id="preset-select">
+                <option value="Character LoRA">Character LoRA</option>
+                <option value="Style LoRA">Style LoRA</option>
+                <option value="Concept LoRA">Concept LoRA</option>
+                <option value="Danbooru Tag Only">Danbooru Tag Only</option>
+                <option value="Natural Language (Flux)">Natural Language (Flux)</option>
+              </select>
+              <button class="btn btn-secondary" id="save-preset-btn">Save As...</button>
+            </div>
+          </div>
+
+          <div class="grid-cols-3">
+            <div class="form-group">
+              <label>Caption Mode</label>
+              <select id="caption-mode-select">
+                <option value="character">Character Mode</option>
+                <option value="style">Style Mode</option>
+                <option value="outfit">Outfit Mode</option>
+                <option value="pose">Pose Mode</option>
+                <option value="concept">Concept Mode</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Caption Format</label>
+              <select id="caption-format-select">
+                <option value="tags">Tags (Comma-Separated)</option>
+                <option value="structured">Structured Phrases</option>
+                <option value="natural">Natural Prose</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Trigger Placement</label>
+              <select id="trigger-placement-select">
+                <option value="prepend">Prepend (Start)</option>
+                <option value="append">Append (End)</option>
+                <option value="wrap">Wrap (Start &amp; End)</option>
+                <option value="omit">Omit (No Trigger)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Character Trigger Word (Overrides Guesswork)</label>
+            <input type="text" id="trigger-word-input" placeholder="e.g. trigger_word">
+          </div>
+
+          <div class="form-group">
+            <label>Character Reference Traits (e.g. hair, eyes, base clothing)</label>
+            <input type="text" id="ref-desc-input" placeholder="e.g. black long hair, red eyes, maid headdress">
+          </div>
+
+          <div class="form-group">
+            <div style="display:flex; gap:20px; align-items:center; margin-top:8px;">
+              <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                <input type="checkbox" id="underscores-chk"> Keep Underscores (blue_eyes)
+              </label>
+              <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                <input type="checkbox" id="backup-chk" checked> Backup Before Run
+              </label>
+              <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                <input type="checkbox" id="overwrite-chk"> Overwrite Existing
+              </label>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:12px; margin-top: 24px;">
+            <button class="btn btn-secondary" id="preview-5-btn" style="flex:1;">👁️ Preview 5 Images</button>
+            <button class="btn btn-primary" id="start-batch-btn" style="flex:2;">🚀 Start Batch Captioning</button>
+          </div>
+        </div>
+
+        <!-- Execution & Live View Column -->
+        <div class="card">
+          <div class="card-title">
+            <span>BATCH PROCESSING MONITOR</span>
+            <button class="btn btn-danger" id="cancel-batch-btn" style="display:none; padding:4px 10px; font-size:11px;">Cancel Run</button>
+          </div>
+
+          <div class="progress-bar-container">
+            <div class="progress-bar" id="batch-progress-bar"></div>
+          </div>
+
+          <div style="display:flex; justify-content:space-between; font-size:12px; color:var(--text-muted); margin-bottom:12px;">
+            <span id="batch-counter">0 / 0 Processed</span>
+            <span id="batch-percent">0.0%</span>
+          </div>
+
+          <div class="form-group">
+            <label>Execution Stream (001 ✓, 002 ✓, ...)</label>
+            <div class="batch-log" id="batch-log-container">
+              <div style="color:var(--text-dim);">No active batch job. Click "Start Batch Captioning" to begin.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. VOCABULARY TAB -->
+    <section id="vocabulary-tab" class="tab-pane">
+      <div class="card">
+        <div class="card-title">DATASET-WIDE VOCABULARY NORMALIZATION</div>
+        <p style="font-size:12px; color:var(--text-muted); margin-bottom:14px;">
+          Inspect every tag detected across all captions in the dataset. Search for synonymous variants and normalize them globally with one click.
+        </p>
+
+        <div class="input-row" style="margin-bottom: 16px;">
+          <input type="text" id="vocab-search-input" placeholder="Search tag or concept variants (e.g. thigh, profile, maid)...">
+          <button class="btn btn-secondary" id="vocab-search-btn">Search</button>
+          <button class="btn btn-secondary" id="vocab-reload-btn">Refresh Table</button>
+        </div>
+
+        <!-- Global Normalization Box -->
+        <div style="padding:14px; background:var(--bg-card); border-radius:var(--radius-sm); margin-bottom:16px; display:flex; gap:12px; align-items:center;">
+          <input type="text" id="norm-old-tag" placeholder="Old tag (e.g. thigh high socks)" style="flex:1;">
+          <span style="color:var(--cyan); font-weight:bold;">➔</span>
+          <input type="text" id="norm-new-tag" placeholder="Canonical tag (e.g. thigh-highs)" style="flex:1;">
+          <button class="btn btn-success" id="norm-apply-btn">Normalize All</button>
+          <button class="btn btn-danger" id="norm-delete-btn">Delete Tag</button>
+        </div>
+
+        <div class="vocab-table-container">
+          <table class="vocab-table">
+            <thead>
+              <tr>
+                <th style="width: 50%;">Tag Name</th>
+                <th style="width: 25%;">Category</th>
+                <th style="width: 15%;">Occurrences</th>
+                <th style="width: 10%;">Action</th>
+              </tr>
+            </thead>
+            <tbody id="vocab-tbody">
+              <tr>
+                <td colspan="4" style="text-align:center; color:var(--text-dim); padding:30px;">
+                  Load a dataset to index vocabulary.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. REVIEW TAB -->
+    <section id="review-tab" class="tab-pane">
+      <div class="review-container">
+        <!-- Left: Image Viewer -->
+        <div class="review-image-pane">
+          <div class="review-image-wrapper">
+            <img id="review-img" src="" alt="Select an image to review">
+          </div>
+          <div style="margin-top: 12px; display:flex; justify-content:space-between; font-size:12px; color:var(--text-muted);">
+            <span id="review-filename">(No image selected)</span>
+            <span id="review-index">0 / 0</span>
+          </div>
+        </div>
+
+        <!-- Right: Editor & Provenance -->
+        <div class="review-editor-pane">
+          <div class="card-title" style="margin-bottom:8px; display:flex; gap:8px; align-items:center;">
+            <span>CAPTION & PROVENANCE INSPECTOR</span>
+            <span id="review-validation-badge" class="status-badge" style="font-size:11px;">VALID ✓</span>
+            <span id="review-status-badge" class="status-badge" style="font-size:11px;">Saved</span>
+          </div>
+
+          <div class="form-group" style="flex:1; display:flex; flex-direction:column;">
+            <label>Generated Training Caption (Directly Editable)</label>
+            <textarea id="review-caption-text" style="flex:1; min-height:140px;"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label>Attribute Provenance & Lock Controls</label>
+            <div class="provenance-chips" id="review-chips-container">
+              <span style="color:var(--text-dim); font-size:11px;">No attribute tags loaded.</span>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;">
+            <button class="btn btn-secondary" id="review-prev-btn">◀ Previous (A)</button>
+            <button class="btn btn-secondary" id="review-next-btn">Next (D) ▶</button>
+            <button class="btn btn-primary" id="review-save-btn">💾 Save (Ctrl+S)</button>
+            <button class="btn btn-secondary" id="review-regen-btn">🔄 Regenerate (R)</button>
+            <button class="btn btn-secondary" id="review-copy-btn">📋 Copy</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. EXPORT TAB -->
+    <section id="export-tab" class="tab-pane">
+      <div class="grid-cols-2">
+        <div class="card">
+          <div class="card-title">MASTER DATASET EXPORT</div>
+          <p style="font-size:12px; color:var(--text-muted); margin-bottom:16px;">
+            Compile all image-caption pairs across the dataset into a single master metadata file for training pipelines.
+          </p>
+
+          <div class="form-group">
+            <label>Export Format</label>
+            <select id="export-format-select">
+              <option value="txt">Combined Text File (.txt - one line per image)</option>
+              <option value="zip">ZIP Archive of .txt sidecars (.zip)</option>
+              <option value="sidecars">Sync / Verify All .txt Sidecars</option>
+              <option value="csv">Master Metadata (.csv)</option>
+              <option value="json">Master Metadata (.json)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Custom Filename (Optional)</label>
+            <input type="text" id="export-filename-input" placeholder="e.g. captions.txt">
+          </div>
+
+          <button class="btn btn-primary" id="export-btn" style="width:100%; margin-top:12px;">Export Master File</button>
+          <div id="export-msg" style="margin-top:12px; font-size:12px; color:var(--emerald);"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">DATASET BACKUP</div>
+          <p style="font-size:12px; color:var(--text-muted); margin-bottom:16px;">
+            Create an immutable timestamped snapshot of the current dataset directory before running major updates or batch normalizations.
+          </p>
+          <button class="btn btn-secondary" id="backup-btn" style="width:100%; margin-top:20px;">📦 Create Full Dataset Backup</button>
+          <div id="backup-msg" style="margin-top:12px; font-size:12px; color:var(--emerald);"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. SETTINGS TAB -->
+    <section id="settings-tab" class="tab-pane">
+      <div class="card">
+        <div class="card-title">SYSTEM PREFERENCES & PATHS</div>
+        <div class="form-group">
+          <label>Offline Local-Cache Directory</label>
+          <input type="text" id="hf-cache-path" value="~/.cache/huggingface/hub" disabled>
+        </div>
+        <div class="form-group">
+          <label>Meta Tag Blacklist (Comma-separated)</label>
+          <textarea id="blacklist-input" rows="4">highres, absurdres, lowres, bad anatomy, bad hands, watermark, signature, artist name, username, logo, copyright, screencap</textarea>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Preview Modal -->
+  <div class="modal-overlay" id="preview-modal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 style="color:var(--cyan); font-size:15px;">SAMPLE PREVIEW CAPTIONS</h3>
+        <button class="chip-lock-btn" id="modal-close-btn" style="font-size:18px; color:var(--text-muted);">&times;</button>
+      </div>
+      <div class="modal-body" id="preview-modal-body">
+        <!-- Dynamic preview cards -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="modal-cancel-btn">Adjust Settings</button>
+        <button class="btn btn-primary" id="modal-accept-btn">Accept &amp; Run Full Batch</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
