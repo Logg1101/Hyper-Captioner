@@ -159,9 +159,13 @@ class SemanticValidator:
         self,
         facts: Optional[StructuredVisualFacts],
         tokens: Optional[List[CaptionToken]],
+        trigger_cfg: Optional[TriggerConfig] = None,
     ) -> Set[str]:
-        """Extract set of normalized texts for inviolable user locked facts."""
+        """Extract set of normalized texts for inviolable user locked facts and triggers."""
         locked_texts: Set[str] = set()
+
+        if trigger_cfg is not None and trigger_cfg.word and trigger_cfg.word.strip():
+            locked_texts.add(trigger_cfg.word.strip().lower())
 
         if facts is not None:
             locked_fact_ids = {fact.id for fact in facts.all_facts() if fact.locked}
@@ -173,7 +177,7 @@ class SemanticValidator:
 
         if tokens is not None:
             for tok in tokens:
-                if tok.transformation == "locked_override":
+                if tok.locked or tok.transformation in ("locked_override", "trigger_injected"):
                     locked_texts.add(tok.text.strip().lower())
                 elif tok.source_fact_ids and any(fid in locked_fact_ids for fid in tok.source_fact_ids):
                     locked_texts.add(tok.text.strip().lower())
@@ -555,26 +559,27 @@ class SemanticValidator:
         Returns:
             ValidationReport with ValidationStatus, issues list, and repaired_caption.
         """
+        caption_str = "" if caption is None else str(caption)
         all_issues: List[ValidationIssue] = []
 
         # 1. Identify inviolable locked user items
-        locked_texts = self._collect_locked_texts(facts, tokens)
+        locked_texts = self._collect_locked_texts(facts, tokens, trigger_cfg)
 
         # 2. Check HARD contradictions (Mutually exclusive -> ERROR)
-        hard_issues = self._detect_hard_contradictions(caption, facts)
+        hard_issues = self._detect_hard_contradictions(caption_str, facts)
         all_issues.extend(hard_issues)
 
         # 3. Check POTENTIAL contradictions (Nuanced coexisting -> WARNING, preserved)
-        potential_issues = self._detect_potential_contradictions(caption)
+        potential_issues = self._detect_potential_contradictions(caption_str)
         all_issues.extend(potential_issues)
 
         # 4. Check Mode Contract Category Leakage (e.g. style mode content leak -> ERROR)
-        leakage_issues = self._check_category_leakage(caption, tokens, mode, locked_texts)
+        leakage_issues = self._check_category_leakage(caption_str, tokens, mode, locked_texts)
         all_issues.extend(leakage_issues)
 
         # 5. Deterministic Safe Auto-Repair
         repaired_caption, repair_issues = self._repair_tokens_and_triggers(
-            caption, trigger_cfg, locked_texts
+            caption_str, trigger_cfg, locked_texts
         )
         all_issues.extend(repair_issues)
 
@@ -585,7 +590,7 @@ class SemanticValidator:
         else:
             # If no errors: check whether any repair took place
             has_repairs = (
-                repaired_caption != caption.strip()
+                repaired_caption != caption_str.strip()
                 or any(i.severity == "INFO" for i in all_issues)
             )
             if has_repairs:

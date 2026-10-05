@@ -584,3 +584,84 @@ class PresetConfig:
             "blacklist": self.blacklist,
         }
 
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "PresetConfig":
+        """Reconstructs a PresetConfig from a dictionary."""
+        char_data = data.get("character", {})
+        if isinstance(char_data, dict):
+            char_cfg = CharacterConfig(
+                name=char_data.get("name", ""),
+                trigger_word=char_data.get("trigger_word", ""),
+                reference_description=char_data.get("reference_description", ""),
+                prune_reference_from_caption=bool(char_data.get("prune_reference_from_caption", False)),
+            )
+        elif isinstance(char_data, CharacterConfig):
+            char_cfg = char_data
+        else:
+            char_cfg = CharacterConfig()
+
+        raw_mode = data.get("caption_mode", CaptionMode.HYBRID)
+        if isinstance(raw_mode, str):
+            try:
+                c_mode = CaptionMode(raw_mode)
+            except ValueError:
+                c_mode = raw_mode
+        else:
+            c_mode = raw_mode
+
+        raw_lora = data.get("lora_strategy", LoRAStrategy.CHARACTER)
+        if isinstance(raw_lora, str):
+            try:
+                lora_strat = LoRAStrategy(raw_lora)
+            except ValueError:
+                lora_strat = LoRAStrategy.CHARACTER
+        else:
+            lora_strat = raw_lora
+
+        raw_vram = data.get("vram_mode", VRAMMode.BALANCED)
+        if isinstance(raw_vram, str):
+            try:
+                vram = VRAMMode(raw_vram)
+            except ValueError:
+                vram = VRAMMode.BALANCED
+        else:
+            vram = raw_vram
+
+        raw_device = data.get("wd14_device", WD14Device.AUTO)
+        if isinstance(raw_device, str):
+            try:
+                device = WD14Device(raw_device)
+            except ValueError:
+                device = WD14Device.AUTO
+        else:
+            device = raw_device
+
+        raw_source = data.get("model_source", ModelSource.LOCAL_ONLY)
+        if isinstance(raw_source, str):
+            try:
+                source = ModelSource(raw_source)
+            except ValueError:
+                source = ModelSource.LOCAL_ONLY
+        else:
+            source = raw_source
+
+        return cls(
+            name=data.get("name", "Character LoRA"),
+            caption_mode=c_mode,
+            caption_format=data.get("caption_format", "tags"),
+            trigger_placement=data.get("trigger_placement", "prepend"),
+            write_audit=bool(data.get("write_audit", False)),
+            lora_strategy=lora_strat,
+            character=char_cfg,
+            wd14_general_threshold=float(data.get("wd14_general_threshold", 0.35)),
+            wd14_character_threshold=float(data.get("wd14_character_threshold", 0.60)),
+            keep_underscores=bool(data.get("keep_underscores", False)),
+            filter_poisons=bool(data.get("filter_poisons", True)),
+            quality_boosters=bool(data.get("quality_boosters", False)),
+            vram_mode=vram,
+            wd14_device=device,
+            model_source=source,
+            custom_tags=str(data.get("custom_tags", "")),
+            blacklist=list(data.get("blacklist", [])),
+        )
+

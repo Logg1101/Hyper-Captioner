@@ -405,13 +405,14 @@ class Stage1Extractor:
 
     def _parse_fused_fallback(self, text: str) -> Dict[SemanticCategory, List[FactItem]]:
         """Parses comma-separated phrases with heuristic category assignment."""
-        parts = [p.strip() for p in re.split(r"[,;\n]+", text) if p.strip()]
+        clean_text = re.sub(r"```(?:[a-zA-Z0-9_-]+)?", "", text)
+        parts = [p.strip() for p in re.split(r"[,;\n]+", clean_text) if p.strip()]
         facts_by_cat: Dict[SemanticCategory, List[FactItem]] = {}
         cat_counts: Dict[SemanticCategory, int] = {}
 
         for p in parts:
             clean = self._clean_fact_text(p)
-            if not clean or len(clean) < 2 or clean.lower() in {"none", "n/a", "unknown", "unclear"}:
+            if not clean or len(clean) < 2 or clean.lower() in {"none", "n/a", "unknown", "unclear", "json", "markdown"}:
                 continue
 
             cat = self._heuristic_categorize(clean)
@@ -541,7 +542,9 @@ class Stage1Extractor:
     ) -> Optional[FactItem]:
         """Constructs a validated, typed FactItem with provenance and unique ID."""
         cleaned = self._clean_fact_text(text)
-        if not cleaned or len(cleaned) < 2 or cleaned.lower() in {"none", "n/a", "unknown", "not visible"}:
+        if not cleaned or len(cleaned) < 2 or cleaned.lower() in {"none", "n/a", "unknown", "not visible", "json", "markdown"}:
+            return None
+        if not re.search(r"[a-zA-Z0-9]", cleaned):
             return None
 
         # Fallback to OBJECTS if category is None
