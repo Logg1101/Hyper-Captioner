@@ -54,30 +54,34 @@ class SemanticCategory(str, Enum):
     TEXTURE     = "texture"      # Micro-surface detail: smooth, rough, individual hair strands
     CONCEPT     = "concept"      # User-defined focal concept or thematic mechanism
     QUALITY     = "quality"      # Objective technical visual clarity (no subjective hype)
-    UNCERTAINTY = "uncertainty"  # Ambiguous/inferred items excluded from final captions
+    UNCERTAINTY = "uncertainty"  # Prompt extraction bucket; internally represented via is_uncertain
 ```
+
+> **Note on Uncertainty:** While `UNCERTAINTY` is exposed in the Stage 1 extraction schema as a prompt bucket for ambiguous or low-confidence items, internally the boolean flag `is_uncertain: bool = True` is the authoritative representation. Any fact where `is_uncertain == True` is strictly excluded from final training captions.
 
 ### Fact Representation & Traceability
 ```python
 @dataclass
 class FactItem:
-    id: str                      # Unique fact ID (e.g. "lighting_01")
-    text: str                    # Cleaned tag or phrase
-    category: SemanticCategory  # Semantic classification
-    confidence: float = 1.0      # Evidence-based calibrated confidence
-    source: str = "joycaption"   # "joycaption", "wd14", "user", "preset"
-    is_stable: bool = False      # Part of invariant subject identity/concept
-    is_uncertain: bool = False   # Below confidence threshold or ambiguous
-    locked: bool = False         # User-locked in UI/CLI (inviolable)
-    raw_text: str = ""           # Unprocessed text from generator
+    id: str                                  # Unique fact ID (e.g. "clothing_01")
+    text: str                                # Cleaned tag or phrase
+    primary_category: SemanticCategory       # Dominant semantic classification
+    categories: List[SemanticCategory] = field(default_factory=list) # Multi-category associations
+    confidence: float = 1.0                  # Evidence-based calibrated confidence
+    source: str = "joycaption"               # "joycaption", "wd14", "user", "preset"
+    is_stable: bool = False                  # Part of invariant subject identity/concept
+    is_uncertain: bool = False               # Authoritative uncertainty flag
+    locked: bool = False                     # User-locked in UI/CLI (inviolable)
+    raw_text: str = ""                       # Unprocessed text from generator
 
 @dataclass
 class CaptionToken:
     text: str
-    category: SemanticCategory
+    primary_category: SemanticCategory
+    categories: List[SemanticCategory]
     source_fact_ids: List[str]
     confidence: float
-    transformation: str          # "direct", "compacted", "trigger_injected", "locked_override"
+    transformation: str                      # "direct", "compacted", "trigger_injected", "locked_override"
 ```
 
 ---
@@ -208,8 +212,8 @@ To prevent training corruption, training `.txt` sidecars and rich audit metadata
 ## 9. CLI, REST API, and Web UI Integration
 
 ### 9.1 Headless CLI (`main.py`)
-- `--mode`: `character` (default), `style`, `outfit`, `pose`, `concept` (with backward compatibility aliases `hybrid`, `tag`, `natural`).
-- `--format`: `tags`, `structured`, `natural`.
+- `--mode`: Semantic mode contract: `character` (default), `style`, `outfit`, `pose`, `concept` (backward compatibility: legacy `--mode hybrid` aliases to `character`, legacy `--mode tag` aliases to `concept`).
+- `--format`: Output format: `tags`, `structured`, `natural` (backward compatibility: legacy `--mode natural` aliases to `--format natural` with semantic mode defaulting to `character`).
 - `--trigger`: Trigger word string.
 - `--trigger-placement`: `prepend`, `append`, `wrap`, `omit`.
 - `--audit` / `--debug-pipeline`: Enables full audit trail logging and `.audit.json` persistence.
