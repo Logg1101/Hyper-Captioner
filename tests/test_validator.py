@@ -217,6 +217,7 @@ def test_validator_trigger_placement_prepend():
     raw_caption = "1girl, standing, Heroine"
     report = validator.validate(caption=raw_caption, trigger_cfg=trigger_cfg, mode=mode)
     assert report.status == ValidationStatus.REPAIRED
+    assert any(i.code == "TRIGGER_REPAIRED" for i in report.issues)
     assert report.repaired_caption.startswith("Heroine, ")
     parts = [p.strip() for p in report.repaired_caption.split(",")]
     assert parts.count("Heroine") == 1
@@ -229,6 +230,7 @@ def test_validator_trigger_placement_append():
     raw_caption = "AestheticV1, cel shading, vibrant colors"
     report = validator.validate(caption=raw_caption, trigger_cfg=trigger_cfg, mode=mode)
     assert report.status == ValidationStatus.REPAIRED
+    assert any(i.code == "TRIGGER_REPAIRED" for i in report.issues)
     assert report.repaired_caption.endswith(", AestheticV1")
     parts = [p.strip() for p in report.repaired_caption.split(",")]
     assert parts.count("AestheticV1") == 1
@@ -241,6 +243,7 @@ def test_validator_trigger_placement_wrap():
     raw_caption = "1girl, floating in space"
     report = validator.validate(caption=raw_caption, trigger_cfg=trigger_cfg, mode=mode)
     assert report.status == ValidationStatus.REPAIRED
+    assert any(i.code == "TRIGGER_REPAIRED" for i in report.issues)
     parts = [p.strip() for p in report.repaired_caption.split(",")]
     assert parts[0] == "ConceptTag"
     assert parts[-1] == "ConceptTag"
@@ -254,10 +257,27 @@ def test_validator_trigger_placement_omit():
     raw_caption = "MyChar, 1girl, standing, MyChar"
     report = validator.validate(caption=raw_caption, trigger_cfg=trigger_cfg, mode=mode)
     assert report.status == ValidationStatus.REPAIRED
+    assert any(i.code == "TRIGGER_REPAIRED" for i in report.issues)
     parts = [p.strip() for p in report.repaired_caption.split(",")]
     assert "MyChar" not in parts
     assert "1girl" in parts
     assert "standing" in parts
+
+
+def test_validator_structured_tokens_quality_category_auto_repaired():
+    validator = SemanticValidator()
+    mode = get_caption_mode("character")
+    tokens = [
+        CaptionToken(text="masterpiece", primary_category=SemanticCategory.QUALITY, categories=[SemanticCategory.QUALITY], source_fact_ids=["f1"], confidence=0.9, transformation="direct"),
+        CaptionToken(text="1girl", primary_category=SemanticCategory.IDENTITY, categories=[SemanticCategory.IDENTITY], source_fact_ids=["f2"], confidence=0.99, transformation="direct"),
+        CaptionToken(text="standing", primary_category=SemanticCategory.POSE, categories=[SemanticCategory.POSE], source_fact_ids=["f3"], confidence=0.95, transformation="direct"),
+    ]
+    raw_caption = "masterpiece, 1girl, standing"
+    report = validator.validate(caption=raw_caption, tokens=tokens, mode=mode)
+    assert report.status == ValidationStatus.REPAIRED
+    assert not any(i.code == "CATEGORY_LEAKAGE" for i in report.issues)
+    assert any(i.code == "SUBJECTIVE_HYPE_REMOVED" for i in report.issues)
+    assert report.repaired_caption == "1girl, standing"
 
 
 def test_validator_case_sensitive_trigger_respects_flag():

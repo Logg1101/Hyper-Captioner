@@ -164,19 +164,19 @@ class SemanticValidator:
         locked_texts: Set[str] = set()
 
         if facts is not None:
+            locked_fact_ids = {fact.id for fact in facts.all_facts() if fact.locked}
             for fact in facts.all_facts():
                 if fact.locked:
                     locked_texts.add(fact.text.strip().lower())
+        else:
+            locked_fact_ids = set()
 
         if tokens is not None:
             for tok in tokens:
                 if tok.transformation == "locked_override":
                     locked_texts.add(tok.text.strip().lower())
-                elif facts is not None and tok.source_fact_ids:
-                    for fid in tok.source_fact_ids:
-                        for fact in facts.all_facts():
-                            if fact.id == fid and fact.locked:
-                                locked_texts.add(tok.text.strip().lower())
+                elif tok.source_fact_ids and any(fid in locked_fact_ids for fid in tok.source_fact_ids):
+                    locked_texts.add(tok.text.strip().lower())
 
         return locked_texts
 
@@ -306,6 +306,9 @@ class SemanticValidator:
             for tok in tokens:
                 if tok.text.strip().lower() in locked_texts:
                     continue
+                # QUALITY category represents subjective hype which is handled via safe auto-repair
+                if tok.primary_category == SemanticCategory.QUALITY:
+                    continue
                 if tok.primary_category in mode.exclude_categories:
                     issues.append(
                         ValidationIssue(
@@ -414,6 +417,7 @@ class SemanticValidator:
         # 4. Trigger deduplication & placement
         if trigger_cfg is not None and trigger_cfg.word and trigger_cfg.word.strip():
             canonical_word = trigger_cfg.word.strip()
+            canonical_lower = canonical_word.lower()
             case_sens = trigger_cfg.case_sensitive
             placement = trigger_cfg.placement
 
@@ -421,7 +425,7 @@ class SemanticValidator:
                 return (
                     t == canonical_word
                     if case_sens
-                    else t.lower() == canonical_word.lower()
+                    else t.lower() == canonical_lower
                 )
 
             trig_count = sum(1 for t in cleaned_segments if is_trig(t))
@@ -462,19 +466,39 @@ class SemanticValidator:
             else:
                 repaired_tokens = [canonical_word] + deduped_non_trig
 
-            # Check if trigger was adjusted
-            repaired_caption = ", ".join(repaired_tokens)
-            orig_caption_clean = ", ".join(raw_segments)
-            if repaired_caption != orig_caption_clean:
-                if trig_count > 1 or (trig_count == 1 and repaired_tokens[0] != canonical_word and placement == TriggerPlacement.PREPEND):
-                    issues.append(
-                        ValidationIssue(
-                            severity="INFO",
-                            code="TRIGGER_REPAIRED",
-                            message=f"Repaired trigger placement/deduplication: '{canonical_word}'",
-                            token=canonical_word,
-                        )
+            # Check if trigger was adjusted or relocated
+            trigger_changed = False
+            if trig_count > 1:
+                trigger_changed = True
+            elif trig_count == 0 and placement != TriggerPlacement.OMIT:
+                trigger_changed = True
+            elif placement == TriggerPlacement.OMIT and trig_count > 0:
+                trigger_changed = True
+            elif placement == TriggerPlacement.PREPEND:
+                if not raw_segments or raw_segments[0].strip().lower() != canonical_lower or raw_segments[0].strip() != canonical_word:
+                    trigger_changed = True
+            elif placement == TriggerPlacement.APPEND:
+                if not raw_segments or raw_segments[-1].strip().lower() != canonical_lower or raw_segments[-1].strip() != canonical_word:
+                    trigger_changed = True
+            elif placement == TriggerPlacement.WRAP:
+                if (
+                    len(raw_segments) < 2
+                    or raw_segments[0].strip().lower() != canonical_lower
+                    or raw_segments[-1].strip().lower() != canonical_lower
+                ):
+                    trigger_changed = True
+
+            if trigger_changed:
+                issues.append(
+                    ValidationIssue(
+                        severity="INFO",
+                        code="TRIGGER_REPAIRED",
+                        message=f"Repaired trigger placement/deduplication: '{canonical_word}'",
+                        token=canonical_word,
                     )
+                )
+
+            repaired_caption = ", ".join(repaired_tokens)
         else:
             # No trigger configured: deduplicate tokens
             deduped_segments: List[str] = []
