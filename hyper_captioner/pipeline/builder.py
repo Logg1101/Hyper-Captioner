@@ -28,37 +28,6 @@ from hyper_captioner.pipeline.semantic_filter import SemanticFilterResult
 
 logger = logging.getLogger(__name__)
 
-# Ensure CaptionToken dynamically supports the 'locked' attribute for lineage tracking
-if "locked" not in getattr(CaptionToken, "__dataclass_fields__", {}):
-    CaptionToken.locked = False
-    _orig_init = CaptionToken.__init__
-
-    def _patched_init(self, *args, locked: bool = False, **kwargs):
-        _orig_init(self, *args, **kwargs)
-        self.locked = locked
-
-    CaptionToken.__init__ = _patched_init
-
-    _orig_to_dict = CaptionToken.to_dict
-
-    def _patched_to_dict(self) -> Dict[str, Any]:
-        d = _orig_to_dict(self)
-        d["locked"] = getattr(self, "locked", False)
-        return d
-
-    CaptionToken.to_dict = _patched_to_dict
-
-    _orig_from_dict = CaptionToken.from_dict
-
-    @classmethod
-    def _patched_from_dict(cls, data: Dict[str, Any]) -> CaptionToken:
-        tok = _orig_from_dict(data)
-        tok.locked = bool(data.get("locked", False))
-        return tok
-
-    CaptionToken.from_dict = _patched_from_dict
-
-
 # Diffusion-friendly category progression hierarchy:
 # IDENTITY (10) ➔ APPEARANCE (20) ➔ EXPRESSION (30) ➔ CLOTHING (40) ➔ POSE (50) ➔
 # COMPOSITION (60) ➔ CAMERA (70) ➔ OBJECTS (80) ➔ ENVIRONMENT (90) ➔ LIGHTING (100) ➔
@@ -190,16 +159,15 @@ class CaptionBuilder:
         """Assembles CaptionToken objects, sorts them, and formats final caption."""
         accepted_facts = filter_result.accepted if filter_result else []
 
-        # 1. Deduplicate accepted facts while preserving insertion order
-        seen_texts = set()
-        unique_facts: List[FactItem] = []
+        # 1. Deduplicate accepted facts while preserving insertion order (preferring locked=True)
+        unique_facts_map: Dict[str, FactItem] = {}
         for fact in accepted_facts:
             raw_t = fact.text.strip().lower()
             if not raw_t:
                 continue
-            if raw_t not in seen_texts:
-                seen_texts.add(raw_t)
-                unique_facts.append(fact)
+            if raw_t not in unique_facts_map or (fact.locked and not unique_facts_map[raw_t].locked):
+                unique_facts_map[raw_t] = fact
+        unique_facts = list(unique_facts_map.values())
 
         # 2. Token Construction & Lineage
         tokens: List[CaptionToken] = []

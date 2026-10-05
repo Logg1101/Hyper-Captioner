@@ -180,6 +180,7 @@ class CaptionToken:
     source_fact_ids: List[str] = field(default_factory=list)
     confidence: float = 1.0
     transformation: str = "direct"
+    locked: bool = False
 
     def __post_init__(self):
         if isinstance(self.primary_category, str):
@@ -207,6 +208,7 @@ class CaptionToken:
             "source_fact_ids": self.source_fact_ids,
             "confidence": round(self.confidence, 4),
             "transformation": self.transformation,
+            "locked": self.locked,
         }
 
     @classmethod
@@ -226,6 +228,7 @@ class CaptionToken:
             source_fact_ids=data.get("source_fact_ids", []),
             confidence=float(data.get("confidence", 1.0)),
             transformation=data.get("transformation", "direct"),
+            locked=bool(data.get("locked", False)),
         )
 
 
