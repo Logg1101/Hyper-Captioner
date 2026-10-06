@@ -1,6 +1,6 @@
 from pathlib import Path
-from PIL import Image
 
+from PIL import Image
 
 SUPPORTED_EXTENSIONS = {
     ".jpg",
